@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda Mengajar Guru & Sistem Absensi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            overflow-x: hidden;
+        }
+        button, input, select {
+            max-width: 100%;
+        }
+        @media (max-width: 640px) {
+            .mobile-compact {
+                padding: 1rem;
+            }
+            .mobile-title {
+                font-size: 1.5rem;
+                line-height: 2rem;
+            }
+        }
+        /* Custom radio button styles for attendance */
+        .radio-attendance {
+            display: none;
+        }
+        .radio-label {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 9999px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+        .radio-attendance[value="H"]:checked + .radio-label { background-color: #10B981; color: white; } /* Hadir - Green */
+        .radio-attendance[value="A"]:checked + .radio-label { background-color: #EF4444; color: white; } /* Alpa - Red */
+        .radio-attendance[value="I"]:checked + .radio-label { background-color: #3B82F6; color: white; } /* Izin - Blue */
+        .radio-attendance[value="S"]:checked + .radio-label { background-color: #F59E0B; color: white; } /* Sakit - Yellow */
+        
+        .radio-label-h { background-color: #D1FAE5; color: #065F46; }
+        .radio-label-a { background-color: #FEE2E2; color: #991B1B; }
+        .radio-label-i { background-color: #DBEAFE; color: #1E3A8A; }
+        .radio-label-s { background-color: #FEF3C7; color: #92400E; }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .pdf-keep-together { page-break-inside: avoid; break-inside: avoid; }
+        .pdf-export {
+            box-sizing: border-box;
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: clamp(16px, 3vw, 32px);
+            line-height: 1.4;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, .12);
+        }
+        .pdf-export .pdf-card-header {
+            padding: 14px 16px;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            background: #eff6ff;
+        }
+        .pdf-export .pdf-card-header h3 {
+            color: #1e3a8a;
+        }
+        .pdf-export .pdf-card-meta {
+            padding: 12px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+        @media (max-width: 640px) {
+            .pdf-export .pdf-card-meta {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+        .pdf-export .pdf-card-table {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow: visible;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+        }
+        .pdf-export h3 {
+            line-height: 1.3;
+            overflow-wrap: break-word;
+        }
+        .pdf-export table {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+        }
+        .pdf-export .recap-daily-table th:nth-child(1),
+        .pdf-export .recap-daily-table td:nth-child(1) { width: 7%; }
+        .pdf-export .recap-daily-table th:nth-child(2),
+        .pdf-export .recap-daily-table td:nth-child(2) { width: 78%; }
+        .pdf-export .recap-daily-table th:nth-child(3),
+        .pdf-export .recap-daily-table td:nth-child(3) { width: 15%; }
+        .pdf-export .recap-total-table th:nth-child(1),
+        .pdf-export .recap-total-table td:nth-child(1) { width: 7%; }
+        .pdf-export .recap-total-table th:nth-child(2),
+        .pdf-export .recap-total-table td:nth-child(2) { width: 53%; }
+        .pdf-export .recap-total-table th:nth-child(n+3),
+        .pdf-export .recap-total-table td:nth-child(n+3) { width: 10%; }
+        .pdf-export th,
+        .pdf-export td {
+            box-sizing: border-box;
+            vertical-align: middle;
+            line-height: 1.35;
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+        }
+        .pdf-export table,
+        .pdf-export th,
+        .pdf-export td { direction: ltr; }
+        .pdf-export .pdf-student-name {
+            white-space: normal !important;
+            overflow-wrap: anywhere !important;
+            word-break: break-all !important;
+            line-height: 1.25;
+        }
+        .pdf-total-export .pdf-student-name {
+            font-size: 12px;
+        }
+        .pdf-total-export th,
+        .pdf-total-export td {
+            white-space: normal;
+            line-height: 1.25;
+        }
+        .pdf-total-export {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: Calibri, Arial, sans-serif;
+            font-size: 11pt;
+            border: 0;
+            border-radius: 0;
+            box-shadow: none;
+        }
+        .pdf-total-export .pdf-card-header {
+            padding: 0 0 12px;
+            margin-bottom: 12px;
+            border: 0;
+            border-bottom: 2px solid #1f2937;
+            border-radius: 0;
+            background: transparent;
+        }
+        .pdf-total-export .pdf-card-header h3 {
+            font-family: Calibri, Arial, sans-serif;
+            color: #111827;
+            font-size: 14pt;
+            line-height: 1.25;
+        }
+        .pdf-total-export .pdf-card-header p {
+            display: block;
+            margin-top: 4px;
+            font-size: 11pt;
+            line-height: 1.3;
+        }
+        .pdf-total-export .pdf-card-table {
+            width: 100%;
+            max-width: none;
+            border: 1px solid #9ca3af;
+            border-radius: 0;
+        }
+        .pdf-total-export .recap-total-table {
+            table-layout: fixed;
+            border-collapse: collapse;
+        }
+        .pdf-total-export .recap-total-table th,
+        .pdf-total-export .recap-total-table td {
+            border: 1px solid #d1d5db;
+            padding: 6px 8px;
+            height: 27px;
+        }
+        .pdf-total-export .recap-total-table thead th {
+            background: #f3f4f6;
+            font-weight: 700;
+            text-align: center;
+        }
+        .pdf-total-export .recap-total-table thead th:nth-child(3) { color: #15803d; }
+        .pdf-total-export .recap-total-table thead th:nth-child(4) { color: #b91c1c; }
+        .pdf-total-export .recap-total-table thead th:nth-child(5) { color: #1d4ed8; }
+        .pdf-total-export .recap-total-table thead th:nth-child(6) { color: #a16207; }
+        .pdf-total-export .recap-total-table th:nth-child(1),
+        .pdf-total-export .recap-total-table td:nth-child(1) { width: 7%; text-align: center; }
+        .pdf-total-export .recap-total-table th:nth-child(2),
+        .pdf-total-export .recap-total-table td:nth-child(2) { width: 53%; text-align: left; }
+        .pdf-total-export .recap-total-table th:nth-child(n+3),
+        .pdf-total-export .recap-total-table td:nth-child(n+3) { width: 10%; text-align: center; }
+        .pdf-total-export .recap-total-table tbody tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        .pdf-export .pdf-card-table table {
+            margin: 0;
+        }
+        #attendanceView .attendance-header,
+        #attendanceView .attendance-controls,
+        #attendanceView .attendance-table-wrap { width: min(100%, 820px); margin-left: auto; margin-right: auto; }
+        #attendanceView { width: min(100%, 820px); margin-left: auto; margin-right: auto; }
+        #attendanceView .attendance-header { display: grid; grid-template-columns: minmax(0, 1fr) 150px; align-items: start; }
+        #attendanceView .attendance-header > button { justify-self: end; }
+        #attendanceView .attendance-controls { display: grid; grid-template-columns: minmax(0, 1fr) 240px; align-items: end; }
+        #attendanceView .attendance-controls > button { justify-self: end; }
+        #attendanceView .attendance-table { width: 100%; table-layout: fixed; }
+        #attendanceView .attendance-table th:nth-child(1), #attendanceView .attendance-table td:nth-child(1) { width: 64px; }
+        #attendanceView .attendance-table th:nth-child(2), #attendanceView .attendance-table td:nth-child(2) { width: calc(100% - 304px); padding-right: 8px; }
+        #attendanceView .attendance-table th:nth-child(3), #attendanceView .attendance-table td:nth-child(3) { width: 240px; }
+        .mobile-zoom-controls { display: none; }
+        @media (max-width: 640px) {
+            #attendanceView .attendance-table {
+                min-width: 450px;
+            }
+            #attendanceView .attendance-table th:nth-child(2),
+            #attendanceView .attendance-table td:nth-child(2) {
+                width: calc(100% - 224px);
+                padding-right: 10px;
+                white-space: normal;
+                overflow-wrap: anywhere;
+            }
+            #attendanceView .attendance-table th:nth-child(3),
+            #attendanceView .attendance-table td:nth-child(3) {
+                width: 160px;
+                padding-left: 8px;
+            }
+            .mobile-zoom-controls {
+                position: fixed;
+                right: 12px;
+                bottom: 12px;
+                z-index: 40;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 6px;
+                border: 1px solid #bfdbfe;
+                border-radius: 12px;
+                background: rgba(255, 255, 255, .96);
+                box-shadow: 0 6px 18px rgba(15, 23, 42, .18);
+            }
+            .mobile-zoom-controls button {
+                width: 32px;
+                height: 30px;
+                border: 0;
+                border-radius: 7px;
+                background: #eff6ff;
+                color: #1d4ed8;
+                font-size: 18px;
+                font-weight: 700;
+                cursor: pointer;
+            }
+            .mobile-zoom-controls button:hover { background: #dbeafe; }
+            #mobileZoomLabel {
+                min-width: 42px;
+                color: #334155;
+                font-size: 11px;
+                font-weight: 700;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body class="text-gray-800 min-h-screen flex flex-col items-center">
+
+    <div class="w-full max-w-4xl mx-auto p-3 sm:p-6 lg:p-8 flex-grow">
+        
+        <!-- Header -->
+        <header class="text-center mb-6 sm:mb-8 pt-4 sm:pt-8">
+            <h1 class="mobile-title text-3xl font-bold text-blue-800 tracking-tight">Absensi Siswa</h1>
+            <p class="text-gray-500 mt-2 text-sm sm:text-base">SMPN 2 Garawangi</p>
+        </header>
+
+        <!-- Notification Area -->
+        <div id="notificationArea" class="hidden mb-4 p-4 rounded-lg shadow-sm font-medium transition-all duration-300"></div>
+
+        <!-- View 1: Login Form -->
+        <div id="loginView" class="mobile-compact bg-white rounded-xl shadow-lg p-6 sm:p-10 max-w-md mx-auto transform transition-all">
+            <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Silakan Login</h2>
+            <form id="loginForm" class="space-y-5">
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" id="email" required class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" placeholder="email@contoh.com">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" id="password" required class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" placeholder="••••••••">
+                </div>
+                <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                    <input type="checkbox" id="rememberLogin" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                    <span>Ingat email dan password di perangkat ini</span>
+                </label>
+                <button type="submit" id="loginBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg shadow transition-colors flex justify-center items-center">
+                    <span>Masuk</span>
+                    <div id="loginLoader" class="loader ml-3 hidden border-t-white" style="width: 20px; height: 20px; border-width: 3px;"></div>
+                </button>
+            </form>
+            <p class="text-xs text-gray-500 text-center mt-6">Data terhubung dengan Google Sheets.</p>
+        </div>
+
+        <!-- View 2: Dashboard Guru -->
+        <div id="dashboardView" class="hidden mobile-compact bg-white rounded-xl shadow-lg p-6 sm:p-10 transition-all">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6 border-b pb-4">
+                <h2 class="text-2xl font-bold text-gray-800 break-words">Dashboard Anda</h2>
+                <button id="logoutBtn" class="text-sm text-red-600 hover:text-red-800 font-medium px-3 py-1 bg-red-50 hover:bg-red-100 rounded-md transition-colors">Logout</button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Profil Info -->
+                <div class="bg-blue-50 rounded-xl p-5 border border-blue-100">
+                    <h3 class="text-lg font-semibold text-blue-900 mb-4">Profil Guru</h3>
+                    <div class="space-y-3">
+                        <div class="flex flex-col">
+                            <span class="text-sm text-blue-600 font-medium">Nama Lengkap</span>
+                            <span id="dashName" class="text-lg font-bold text-gray-900"></span>
+                        </div>
+                        <div class="flex flex-col">
+                            <label for="dashMapel" class="text-sm text-blue-600 font-medium mb-1">Pilih Mata Pelajaran (Mapel)</label>
+                            <select id="dashMapel" class="w-full text-base font-semibold text-gray-800 bg-white border border-blue-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors shadow-sm cursor-pointer"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kelas Info & Action -->
+                <div class="bg-emerald-50 rounded-xl p-5 border border-emerald-100 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-emerald-900 mb-4">Tugas Mengajar Hari Ini</h3>
+                        <div class="flex flex-col mb-4">
+                            <label for="dashKelas" class="text-sm text-emerald-600 font-medium mb-1">Pilih Kelas yang diajar</label>
+                            <select id="dashKelas" class="w-full text-base font-semibold text-gray-800 bg-white border border-emerald-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-colors shadow-sm cursor-pointer"></select>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-3 mt-2">
+                        <button id="openAttendanceBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-lg shadow transition-colors flex justify-center items-center">
+                            <span>Buka Sistem Absensi</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        <button id="openRecapAllBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg shadow transition-colors flex justify-center items-center">
+                            <span>Lihat Rekap Total Absensi</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View 3: Sistem Absensi -->
+        <div id="attendanceView" class="hidden bg-white rounded-xl shadow-lg p-6 sm:p-10 transition-all">
+            <div class="attendance-header flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b pb-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Form Absensi Siswa</h2>
+                    <p class="text-gray-600 mt-1">Mapel: <span id="attMapel" class="font-semibold text-blue-700"></span> | Kelas: <span id="attKelas" class="font-semibold text-emerald-700"></span></p>
+                </div>
+                <button id="backToDashboardBtn" class="text-sm text-gray-600 hover:text-gray-800 font-medium px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Kembali
+                </button>
+            </div>
+
+            <div id="studentListLoader" class="flex flex-col items-center justify-center py-10 hidden">
+                <div class="loader mb-4 border-t-blue-500"></div>
+                <p class="text-gray-500 font-medium">Memuat data siswa...</p>
+            </div>
+
+            <div id="attendanceContent" class="hidden">
+                <form id="attendanceForm">
+                    <div class="attendance-controls flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+                        <div class="w-full sm:w-auto">
+                            <label for="tanggalAbsen" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pertemuan</label>
+                            <input type="date" id="tanggalAbsen" required class="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none w-full sm:w-auto">
+                        </div>
+                        <button type="button" id="markAllPresentBtn" class="w-full sm:w-auto text-sm bg-green-50 hover:bg-green-100 text-green-700 font-semibold py-2 px-4 border border-green-200 rounded-lg transition-colors">
+                            Ceklis Hadir Semua
+                        </button>
+                    </div>
+
+                    <div class="attendance-table-wrap overflow-x-auto ring-1 ring-black ring-opacity-5 rounded-lg mb-6">
+                        <table class="attendance-table divide-y divide-gray-300">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 w-16">No</th>
+                                    <th scope="col" class="pr-0 pl-0 py-3.5 text-left text-sm font-semibold text-gray-900">Nama Siswa</th>
+                                    <th scope="col" class="pl-0 pr-0 py-3.5 text-left text-sm font-semibold text-gray-900 w-32">Status Absensi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentListBody" class="divide-y divide-gray-200 bg-white">
+                                <!-- Data siswa di-render di sini -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 flex justify-center items-center text-lg">
+                        Simpan Absensi & Tampilkan Rekap
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- View 4: Rekap & Download PDF -->
+        <div id="recapView" class="hidden bg-white rounded-xl shadow-lg p-6 sm:p-10 transition-all mt-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b pb-4">
+                <h2 class="text-2xl font-bold text-gray-800">Rekap Absensi Harian</h2>
+                <div class="flex gap-2">
+                    <button id="editAttendanceBtn" class="text-sm text-blue-600 hover:text-blue-800 font-medium px-4 py-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">Edit Kembali</button>
+                    <button id="exportPdfBtn" class="text-sm px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg shadow transition-colors flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Export Excel
+                    </button>
+                </div>
+            </div>
+
+            <!-- Area yang akan di export ke PDF -->
+            <div id="pdfContent" class="pdf-export bg-white border rounded-lg">
+                <div class="pdf-card-header text-center mb-8 border-b-2 border-gray-800 pb-4">
+                    <h3 class="text-xl font-bold uppercase tracking-wider">Laporan Absensi Siswa</h3>
+                    <p class="text-sm text-gray-600 mt-1">Sistem Informasi Agenda Mengajar Guru</p>
+                </div>
+                
+                <div class="pdf-card-meta grid grid-cols-2 gap-4 mb-8 text-sm">
+                    <div>
+                        <p><span class="font-semibold inline-block w-32">Mata Pelajaran</span>: <span id="recapMapel"></span></p>
+                        <p><span class="font-semibold inline-block w-32">Kelas</span>: <span id="recapKelas"></span></p>
+                    </div>
+                    <div>
+                        <p><span class="font-semibold inline-block w-32">Tanggal</span>: <span id="recapTanggal"></span></p>
+                        <p><span class="font-semibold inline-block w-32">Guru Pengajar</span>: <span id="recapGuru"></span></p>
+                    </div>
+                </div>
+
+                <div class="pdf-card-table mb-6">
+                    <table class="recap-daily-table divide-y divide-gray-300">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th scope="col" class="py-2.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 border-r w-12">No</th>
+                            <th scope="col" class="px-3 py-2.5 text-left text-sm font-semibold text-gray-900 border-r">Nama Siswa</th>
+                            <th scope="col" class="px-3 py-2.5 text-center text-sm font-semibold text-gray-900">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recapTableBody" class="divide-y divide-gray-200">
+                        <!-- Data hasil absen masuk sini -->
+                    </tbody>
+                    </table>
+                </div>
+
+                <div class="pdf-keep-together flex flex-col sm:flex-row justify-between items-stretch gap-6 mt-8">
+                    <div class="w-full sm:w-1/2 pdf-keep-together">
+                        <p class="font-bold text-sm mb-2">Ringkasan:</p>
+                        <ul class="grid grid-cols-2 gap-2 text-sm">
+                            <li class="flex items-center justify-between rounded-lg bg-green-50 px-3 py-2"><span>Hadir (H)</span><span id="countH" class="min-w-7 rounded-full bg-green-600 px-2 py-0.5 text-center font-bold text-white"></span></li>
+                            <li class="flex items-center justify-between rounded-lg bg-red-50 px-3 py-2"><span>Alpa (A)</span><span id="countA" class="min-w-7 rounded-full bg-red-600 px-2 py-0.5 text-center font-bold text-white"></span></li>
+                            <li class="flex items-center justify-between rounded-lg bg-blue-50 px-3 py-2"><span>Izin (I)</span><span id="countI" class="min-w-7 rounded-full bg-blue-600 px-2 py-0.5 text-center font-bold text-white"></span></li>
+                            <li class="flex items-center justify-between rounded-lg bg-yellow-50 px-3 py-2"><span>Sakit (S)</span><span id="countS" class="min-w-7 rounded-full bg-yellow-500 px-2 py-0.5 text-center font-bold text-white"></span></li>
+                        </ul>
+                    </div>
+                    <div class="w-full sm:w-1/2 text-right pdf-keep-together">
+                        <p class="text-sm mb-16">Mengetahui,</p>
+                        <p id="signatureName" class="text-sm font-bold border-b border-gray-800 inline-block px-4 pb-1"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View 5: Rekap Total Absensi -->
+        <div id="recapAllView" class="hidden bg-white rounded-xl shadow-lg p-6 sm:p-8 transition-all mt-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b pb-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Rekap Total Absensi</h2>
+                    <p class="text-gray-600 mt-1">Akumulasi seluruh pertemuan</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button id="backToDashFromRecapAllBtn" class="text-sm text-blue-600 hover:text-blue-800 font-medium px-4 py-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        Kembali
+                    </button>
+                    <button id="exportPdfRecapAllBtn" class="text-sm px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg shadow transition-colors flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Export Excel
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loader for total recap -->
+            <div id="recapAllLoader" class="flex flex-col items-center justify-center py-10 hidden">
+                <div class="loader mb-4 border-t-blue-500"></div>
+                <p class="text-gray-500 font-medium">Mengkalkulasi seluruh data absensi...</p>
+            </div>
+
+            <!-- PDF Container (Rekap Total) -->
+            <div id="recapAllContent" class="pdf-export pdf-total-export bg-white hidden">
+                <div class="pdf-card-header text-center mb-6 pb-4 border-b-2 border-gray-800">
+                    <h3 class="text-xl font-bold uppercase">Rekapitulasi Total Absensi Siswa</h3>
+                    <p class="text-sm mt-1">Mata Pelajaran: <span id="raMapel" class="font-bold"></span></p>
+                    <p class="text-sm">Kelas: <span id="raKelas" class="font-bold"></span></p>
+                    <p class="text-sm">Diunduh pada: <span id="raTanggal" class="font-bold"></span></p>
+                </div>
+
+                <div class="pdf-card-table">
+                    <table class="recap-total-table divide-y divide-gray-300">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th scope="col" class="py-2.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">No</th>
+                                <th scope="col" class="px-3 py-2.5 text-left text-sm font-semibold text-gray-900">Nama Siswa</th>
+                                <th scope="col" class="px-3 py-2.5 text-center text-sm font-semibold text-green-700">Hadir</th>
+                                <th scope="col" class="px-3 py-2.5 text-center text-sm font-semibold text-red-700">Alpa</th>
+                                <th scope="col" class="px-3 py-2.5 text-center text-sm font-semibold text-blue-700">Izin</th>
+                                <th scope="col" class="px-3 py-2.5 text-center text-sm font-semibold text-yellow-700">Sakit</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recapAllTableBody" class="divide-y divide-gray-200 bg-white">
+                            <!-- Data rekap total di-render di sini -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="mobile-zoom-controls" aria-label="Kontrol zoom tampilan">
+        <button type="button" id="zoomOutBtn" aria-label="Perkecil tampilan">−</button>
+        <span id="mobileZoomLabel">80%</span>
+        <button type="button" id="zoomInBtn" aria-label="Perbesar tampilan">+</button>
+    </div>
+
+    <script>
+        /**
+         * Konfigurasi Google Sheets
+         * ID Spreadsheet didapat dari URL: https://docs.google.com/spreadsheets/d/1w0vkkZrdYrna7F1ky2sGVyoWojOb73cdA6k3NjfozqI/edit
+         */
+        const SPREADSHEET_ID = '1w0vkkZrdYrna7F1ky2sGVyoWojOb73cdA6k3NjfozqI';
+        
+        // PENTING: Paste URL Web App dari Google Apps Script di sini!
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzgBiYHhgrYyzAxaqCVumKf8VwvCQstnMQWGxGx_Dx4mulH_7amd7AUyAQJITW37O1E/exec';
+        const SAVED_LOGIN_KEY = 'portalGuruSavedLogin';
+        
+        // State Aplikasi
+        let currentUser = null;
+        let currentStudents = [];
+        let attendanceData = {}; // Format: { studentName: status }
+        let attendanceDataLoaded = false;
+        
+        // Element References
+        const elements = {
+            views: {
+                login: document.getElementById('loginView'),
+                dashboard: document.getElementById('dashboardView'),
+                attendance: document.getElementById('attendanceView'),
+                recap: document.getElementById('recapView'),
+                recapAll: document.getElementById('recapAllView') // Tambahan view baru
+            },
+            login: {
+                form: document.getElementById('loginForm'),
+                email: document.getElementById('email'),
+                password: document.getElementById('password'),
+                remember: document.getElementById('rememberLogin'),
+                btn: document.getElementById('loginBtn'),
+                loader: document.getElementById('loginLoader')
+            },
+            dashboard: {
+                name: document.getElementById('dashName'),
+                mapel: document.getElementById('dashMapel'),
+                kelas: document.getElementById('dashKelas'),
+                openBtn: document.getElementById('openAttendanceBtn'),
+                openRecapAllBtn: document.getElementById('openRecapAllBtn'), // Tambahan tombol rekap total
+                logoutBtn: document.getElementById('logoutBtn')
+            },
+            attendance: {
+                mapel: document.getElementById('attMapel'),
+                kelas: document.getElementById('attKelas'),
+                backBtn: document.getElementById('backToDashboardBtn'),
+                loader: document.getElementById('studentListLoader'),
+                content: document.getElementById('attendanceContent'),
+                form: document.getElementById('attendanceForm'),
+                tbody: document.getElementById('studentListBody'),
+                dateInput: document.getElementById('tanggalAbsen'),
+                markAllBtn: document.getElementById('markAllPresentBtn')
+            },
+            recap: {
+                mapel: document.getElementById('recapMapel'),
+                kelas: document.getElementById('recapKelas'),
+                tanggal: document.getElementById('recapTanggal'),
+                guru: document.getElementById('recapGuru'),
+                signatureName: document.getElementById('signatureName'),
+                tbody: document.getElementById('recapTableBody'),
+                editBtn: document.getElementById('editAttendanceBtn'),
+                exportBtn: document.getElementById('exportPdfBtn'),
+                counts: {
+                    H: document.getElementById('countH'),
+                    A: document.getElementById('countA'),
+                    I: document.getElementById('countI'),
+                    S: document.getElementById('countS')
+                }
+            },
+            recapAll: {
+                mapel: document.getElementById('raMapel'),
+                kelas: document.getElementById('raKelas'),
+                tanggal: document.getElementById('raTanggal'),
+                backBtn: document.getElementById('backToDashFromRecapAllBtn'),
+                loader: document.getElementById('recapAllLoader'),
+                content: document.getElementById('recapAllContent'),
+                tbody: document.getElementById('recapAllTableBody'),
+                exportBtn: document.getElementById('exportPdfRecapAllBtn')
+            },
+            notification: document.getElementById('notificationArea')
+        };
+
+        const MOBILE_ZOOM_KEY = 'portalAbsensiMobileZoom';
+        let mobileZoom = Number(localStorage.getItem(MOBILE_ZOOM_KEY)) || 0.8;
+
+        function applyMobileZoom() {
+            mobileZoom = Math.min(1.2, Math.max(0.7, mobileZoom));
+            document.documentElement.style.zoom = mobileZoom;
+            const zoomLabel = document.getElementById('mobileZoomLabel');
+            if (zoomLabel) zoomLabel.textContent = `${Math.round(mobileZoom * 100)}%`;
+            localStorage.setItem(MOBILE_ZOOM_KEY, String(mobileZoom));
+        }
+
+        document.getElementById('zoomOutBtn')?.addEventListener('click', () => {
+            mobileZoom = Math.round((mobileZoom - 0.1) * 10) / 10;
+            applyMobileZoom();
+        });
+
+        document.getElementById('zoomInBtn')?.addEventListener('click', () => {
+            mobileZoom = Math.round((mobileZoom + 0.1) * 10) / 10;
+            applyMobileZoom();
+        });
+
+        applyMobileZoom();
+
+        // Set default date to today
+        elements.attendance.dateInput.valueAsDate = new Date();
+
+        /**
+         * Utility Functions
+         */
+        
+        // Menampilkan notifikasi
+        function showNotification(message, type = 'info') {
+            const notif = elements.notification;
+            notif.innerHTML = message;
+            notif.className = `mb-4 p-4 rounded-lg shadow-sm font-medium transition-all duration-300 transform scale-100 opacity-100 block`;
+            
+            if (type === 'error') notif.classList.add('bg-red-100', 'text-red-800', 'border', 'border-red-200');
+            else if (type === 'success') notif.classList.add('bg-emerald-100', 'text-emerald-800', 'border', 'border-emerald-200');
+            else notif.classList.add('bg-blue-100', 'text-blue-800', 'border', 'border-blue-200');
+
+            setTimeout(() => {
+                notif.classList.replace('scale-100', 'scale-95');
+                notif.classList.replace('opacity-100', 'opacity-0');
+                setTimeout(() => { notif.classList.add('hidden'); notif.classList.remove('scale-95', 'opacity-0'); }, 300);
+            }, 5000);
+        }
+
+        // Mengatur tampilan view (SPA navigation)
+        function showView(viewName) {
+            Object.values(elements.views).forEach(v => v.classList.add('hidden'));
+            if (elements.views[viewName]) {
+                elements.views[viewName].classList.remove('hidden');
+                // Scroll ke atas
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        // Fungsi parse CSV Sederhana. 
+        // Mengubah string CSV menjadi Array Object berdasarkan header baris pertama
+        function parseCSV(csvText) {
+            const lines = csvText.split('\n').filter(line => line.trim() !== '');
+            if (lines.length === 0) return [];
+
+            // Helper untuk membersihkan quotes dari nilai CSV (Google Sheet export membungkus dengan quote)
+            const cleanValue = (val) => {
+                if (!val) return '';
+                val = val.trim();
+                if (val.startsWith('"') && val.endsWith('"')) {
+                    val = val.substring(1, val.length - 1);
+                }
+                // Hapus double quotes di dalam string (escaping CSV)
+                return val.replace(/""/g, '"');
+            };
+
+            // Parse baris dengan mempertimbangkan quote yang berisi koma
+            const parseLine = (line) => {
+                const result = [];
+                let current = '';
+                let inQuotes = false;
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    if (char === '"' && line[i+1] === '"') {
+                        current += '"';
+                        i++;
+                    } else if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        result.push(cleanValue(current));
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                result.push(cleanValue(current));
+                return result;
+            };
+
+            const headers = parseLine(lines[0]);
+            const result = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = parseLine(lines[i]);
+                const obj = {};
+                headers.forEach((header, index) => {
+                    if (header) { // Hanya proses jika header tidak kosong
+                         // Normalisasi header (hapus spasi ekstra, lowerCase opsional jika perlu, disini kita pertahankan case aslinya agar mudah diakses)
+                         obj[header] = values[index] || '';
+                    }
+                });
+                // Jika object tidak sepenuhnya kosong, masukkan ke hasil
+                if (Object.values(obj).some(val => val !== '')) {
+                     result.push(obj);
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Mengambil data dari public CSV Google Sheets
+         * Menggunakan format URL gviz/tq untuk export spesifik sheet
+         */
+        async function fetchSheetData(sheetName) {
+            const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const csvText = await response.text();
+                return parseCSV(csvText);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                throw error;
+            }
+        }
+
+        /**
+         * Event Listeners & Logic
+         */
+
+        // 1. Proses Login
+        elements.login.form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = elements.login.email.value.trim();
+            const password = elements.login.password.value;
+
+            // UI Feedback Loading
+            elements.login.btn.disabled = true;
+            elements.login.btn.classList.add('opacity-75');
+            elements.login.btn.querySelector('span').innerText = 'Memverifikasi...';
+            elements.login.loader.classList.remove('hidden');
+
+            try {
+                // Ambil data dari sheet 'login'
+                const loginData = await fetchSheetData('login');
+                
+                // Asumsi kolom di sheet login: (A) Email, (B) Password, (C) Nama Guru, (D) Mapel, (E) Kelas
+                // Note: Header di CSV mungkin case sensitive berdasarkan row 1 di sheet.
+                // Kita gunakan method dinamis untuk menemukan kolom yang cocok
+                
+                if(loginData.length === 0) {
+                    throw new Error("Data login kosong atau sheet 'login' tidak ditemukan/salah format.");
+                }
+
+                // Cari row user yang cocok
+                // Kita asumsikan nama header mengandung kata 'email' dan 'password' (case-insensitive)
+                const headers = Object.keys(loginData[0]);
+                const emailKey = headers.find(h => h.toLowerCase().includes('email')) || headers[0];
+                const passwordKey = headers.find(h => h.toLowerCase().includes('password')) || headers[1];
+                const nameKey = headers.find(h => h.toLowerCase().includes('nama')) || headers[2];
+                const mapelKey = headers.find(h => h.toLowerCase().includes('mapel') || h.toLowerCase().includes('pelajaran')) || headers[3];
+                const kelasKey = headers.find(h => h.toLowerCase().includes('kelas')) || headers[4];
+
+                const user = loginData.find(row => row[emailKey] === email && row[passwordKey] === password);
+
+                if (user) {
+                    // Login Berhasil
+                    currentUser = {
+                        email: user[emailKey],
+                        name: user[nameKey],
+                        mapel: user[mapelKey],
+                        kelas: user[kelasKey]
+                    };
+
+                    if (elements.login.remember.checked) {
+                        localStorage.setItem(SAVED_LOGIN_KEY, JSON.stringify({ email, password }));
+                    } else {
+                        localStorage.removeItem(SAVED_LOGIN_KEY);
+                    }
+                    
+                    // Setup Dashboard
+                    elements.dashboard.name.innerText = currentUser.name;
+                    
+                    // Setup Dropdown Mapel
+                    const mapelSelect = elements.dashboard.mapel;
+                    mapelSelect.innerHTML = '';
+                    const mapels = currentUser.mapel.split(',').map(m => m.trim()).filter(m => m);
+                    if (mapels.length > 0) {
+                        mapels.forEach(m => {
+                            const opt = document.createElement('option');
+                            opt.value = m;
+                            opt.textContent = m;
+                            mapelSelect.appendChild(opt);
+                        });
+                    } else {
+                        const opt = document.createElement('option');
+                        opt.value = currentUser.mapel || '-';
+                        opt.textContent = currentUser.mapel || 'Tidak ada data mapel';
+                        mapelSelect.appendChild(opt);
+                    }
+
+                    // Setup Dropdown Kelas
+                    const kelasSelect = elements.dashboard.kelas;
+                    kelasSelect.innerHTML = '';
+                    // Pisahkan berdasarkan koma jika ada lebih dari 1 kelas (misal: "7A, 7B, 8C")
+                    const classes = currentUser.kelas.split(',').map(c => c.trim()).filter(c => c);
+                    if (classes.length > 0) {
+                        classes.forEach(c => {
+                            const opt = document.createElement('option');
+                            opt.value = c;
+                            opt.textContent = c;
+                            kelasSelect.appendChild(opt);
+                        });
+                    } else {
+                        const opt = document.createElement('option');
+                        opt.value = currentUser.kelas || '-';
+                        opt.textContent = currentUser.kelas || 'Tidak ada data kelas';
+                        kelasSelect.appendChild(opt);
+                    }
+                    
+                    showNotification('Login berhasil! Selamat datang, ' + currentUser.name, 'success');
+                    showView('dashboard');
+                } else {
+                    // Login Gagal
+                    showNotification('Email atau Password salah.', 'error');
+                }
+            } catch (error) {
+                showNotification(`Gagal menghubungi server. Pastikan Sheet bersifat Publik ("Anyone with link can view"). Detail: ${error.message}`, 'error');
+            } finally {
+                // Reset UI Feedback
+                elements.login.btn.disabled = false;
+                elements.login.btn.classList.remove('opacity-75');
+                elements.login.btn.querySelector('span').innerText = 'Masuk';
+                elements.login.loader.classList.add('hidden');
+            }
+        });
+
+        // 2. Logout
+        elements.dashboard.logoutBtn.addEventListener('click', () => {
+            currentUser = null;
+            localStorage.removeItem(SAVED_LOGIN_KEY);
+            elements.login.form.reset();
+            showView('login');
+            elements.views.recap.classList.add('hidden'); // Sembunyikan recap jika ada
+            elements.views.recapAll.classList.add('hidden'); 
+            showNotification('Anda telah berhasil logout.', 'info');
+        });
+
+        // Pulihkan isian login tanpa melewati validasi Google Sheets.
+        try {
+            const savedLogin = JSON.parse(localStorage.getItem(SAVED_LOGIN_KEY));
+            if (savedLogin && savedLogin.email && savedLogin.password) {
+                elements.login.email.value = savedLogin.email;
+                elements.login.password.value = savedLogin.password;
+                elements.login.remember.checked = true;
+            }
+        } catch (error) {
+            localStorage.removeItem(SAVED_LOGIN_KEY);
+        }
+
+        // 3. Buka Sistem Absensi
+        elements.dashboard.openBtn.addEventListener('click', async () => {
+            if (!currentUser) return;
+            
+            const selectedMapel = elements.dashboard.mapel.value;
+            const selectedKelas = elements.dashboard.kelas.value;
+            
+            currentUser.selectedMapel = selectedMapel;
+            currentUser.selectedKelas = selectedKelas;
+
+            elements.attendance.mapel.innerText = selectedMapel;
+            elements.attendance.kelas.innerText = selectedKelas;
+            
+            showView('attendance');
+            elements.views.recap.classList.add('hidden'); // Reset view rekap
+            elements.views.recapAll.classList.add('hidden'); 
+
+            // UI Feedback Memuat daftar siswa
+            elements.attendance.content.classList.add('hidden');
+            elements.attendance.loader.classList.remove('hidden');
+            elements.attendance.tbody.innerHTML = '';
+            currentStudents = [];
+            attendanceData = {};
+            attendanceDataLoaded = false;
+
+            try {
+                // Nama sheet diasumsikan persis sama dengan nama Mapel (ex: PAI, PKn, MTK)
+                const sheetName = selectedMapel;
+                const studentData = await fetchSheetData(sheetName);
+                
+                if (studentData.length === 0) {
+                    elements.attendance.tbody.innerHTML = `<tr><td colspan="3" class="px-3 py-4 text-center text-sm text-gray-500">Data siswa kosong pada sheet '${sheetName}'.</td></tr>`;
+                } else {
+                    // Asumsi kolom di sheet mapel minimal ada 'Nama' atau nama siswa berada di kolom pertama/kedua
+                    const headers = Object.keys(studentData[0]);
+                    const namaKey = headers.find(h => h.toLowerCase().includes('nama')) || headers[1] || headers[0]; // Coba cari header mengandung kata 'nama', kalau tidak ambil kolom ke-2 atau 1.
+                    const kelasKey = headers.find(h => h.toLowerCase() === 'kelas' || h.toLowerCase().includes('kelas'));
+                    
+                    let filteredData = studentData;
+                    
+                    // Filter berdasarkan kelas yang dipilih jika kolom kelas ditemukan di sheet Mapel
+                    if (kelasKey && currentUser.selectedKelas) {
+                        filteredData = studentData.filter(row => {
+                            const rowClass = row[kelasKey] ? row[kelasKey].toString().trim().toLowerCase() : '';
+                            const targetClass = currentUser.selectedKelas.toLowerCase();
+                            return rowClass === targetClass;
+                        });
+                        
+                        // Jika hasil filter kosong, berikan info dan tampilkan semua (fallback)
+                        if (filteredData.length === 0) {
+                            showNotification(`Siswa untuk kelas ${currentUser.selectedKelas} tidak ditemukan. Menampilkan semua siswa di sheet ${sheetName}.`, 'info');
+                            filteredData = studentData;
+                        }
+                    }
+
+                    // Filter row yang namanya tidak kosong (antisipasi row kosong di spreadhseet)
+                    currentStudents = filteredData.filter(row => row[namaKey] && row[namaKey].trim() !== '').map(row => row[namaKey].trim());
+                    
+                    renderStudentTable();
+                    await loadSavedAttendance();
+                }
+            } catch (error) {
+                elements.attendance.tbody.innerHTML = `<tr><td colspan="3" class="px-3 py-4 text-center text-sm text-red-500 font-medium">Gagal memuat data dari Sheet '${selectedMapel}'. Pastikan nama sheet sesuai dengan Mapel guru dan data bersifat Publik.</td></tr>`;
+                console.error(error);
+            } finally {
+                elements.attendance.loader.classList.add('hidden');
+                elements.attendance.content.classList.remove('hidden');
+            }
+        });
+
+        // Kembali dari absensi ke dashboard
+        elements.attendance.backBtn.addEventListener('click', () => {
+            showView('dashboard');
+            elements.views.recap.classList.add('hidden');
+            elements.views.recapAll.classList.add('hidden');
+        });
+
+        // Fungsi merender tabel siswa dengan radio buttons
+        function renderStudentTable() {
+            const tbody = elements.attendance.tbody;
+            tbody.innerHTML = '';
+            
+            currentStudents.forEach((studentName, index) => {
+                const tr = document.createElement('tr');
+                // Alternating background for readability
+                if (index % 2 !== 0) tr.classList.add('bg-gray-50');
+                
+                // Tanggal baru default Hadir; tanggal lama mempertahankan sel kosong.
+                if (!attendanceDataLoaded && !attendanceData[studentName]) {
+                    attendanceData[studentName] = 'H';
+                }
+
+                const id_H = `att_${index}_H`;
+                const id_A = `att_${index}_A`;
+                const id_I = `att_${index}_I`;
+                const id_S = `att_${index}_S`;
+
+                tr.innerHTML = `
+                    <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">${index + 1}</td>
+                    <td class="whitespace-nowrap pr-0 pl-0 py-4 text-sm text-gray-700">${studentName}</td>
+                    <td class="whitespace-nowrap pl-0 pr-0 py-4 text-sm text-left">
+                        <div class="flex justify-start items-center space-x-1">
+                            <!-- Hadir -->
+                            <div class="tooltip-container" title="Hadir">
+                                <input type="radio" id="${id_H}" name="att_${index}" value="H" class="radio-attendance" onchange="updateAttendanceByIndex(${index}, 'H')" ${attendanceData[studentName] === 'H' ? 'checked' : ''}>
+                                <label for="${id_H}" class="radio-label radio-label-h" title="Hadir">H</label>
+                            </div>
+                            <!-- Alpa -->
+                            <div class="tooltip-container" title="Alpa">
+                                <input type="radio" id="${id_A}" name="att_${index}" value="A" class="radio-attendance" onchange="updateAttendanceByIndex(${index}, 'A')" ${attendanceData[studentName] === 'A' ? 'checked' : ''}>
+                                <label for="${id_A}" class="radio-label radio-label-a" title="Alpa">A</label>
+                            </div>
+                            <!-- Izin -->
+                            <div class="tooltip-container" title="Izin">
+                                <input type="radio" id="${id_I}" name="att_${index}" value="I" class="radio-attendance" onchange="updateAttendanceByIndex(${index}, 'I')" ${attendanceData[studentName] === 'I' ? 'checked' : ''}>
+                                <label for="${id_I}" class="radio-label radio-label-i" title="Izin">I</label>
+                            </div>
+                            <!-- Sakit -->
+                            <div class="tooltip-container" title="Sakit">
+                                <input type="radio" id="${id_S}" name="att_${index}" value="S" class="radio-attendance" onchange="updateAttendanceByIndex(${index}, 'S')" ${attendanceData[studentName] === 'S' ? 'checked' : ''}>
+                                <label for="${id_S}" class="radio-label radio-label-s" title="Sakit">S</label>
+                            </div>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Global function yang dipanggil oleh inline onchange dari radio button
+        window.updateAttendance = function(studentName, status) {
+            attendanceData[studentName] = status;
+        };
+
+        window.updateAttendanceByIndex = function(index, status) {
+            const studentName = currentStudents[index];
+            if (studentName) updateAttendance(studentName, status);
+        };
+
+        function normalizeStudentName(name) {
+            return String(name || '')
+                .replace(/\u00a0/g, ' ')
+                .replace(/[\u200B-\u200D\uFEFF]/g, '')
+                .replace(/[^\p{L}\p{N} ]/gu, ' ')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .toLowerCase();
+        }
+
+        // Memuat status absensi yang sudah tersimpan untuk tanggal terpilih.
+        async function loadSavedAttendance() {
+            if (!currentUser || !currentStudents.length || !elements.attendance.dateInput.value) return;
+
+            const params = new URLSearchParams({
+                action: 'getAttendance',
+                sheetName: currentUser.selectedMapel,
+                className: currentUser.selectedKelas,
+                date: elements.attendance.dateInput.value
+            });
+
+            try {
+                const response = await fetch(`${APPS_SCRIPT_URL}?${params.toString()}`, { cache: 'no-store' });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const result = await response.json();
+
+                if (result.status !== 'success') throw new Error(result.message || 'Data absensi tidak dapat dibaca.');
+
+                const savedAttendance = Object.entries(result.attendance || {}).reduce((lookup, [name, status]) => {
+                    lookup[normalizeStudentName(name)] = status;
+                    return lookup;
+                }, {});
+
+                currentStudents.forEach(studentName => {
+                    const savedStatus = savedAttendance[normalizeStudentName(studentName)];
+                    attendanceData[studentName] = result.found
+                        ? (savedStatus || '')
+                        : 'H';
+                });
+                attendanceDataLoaded = true;
+                renderStudentTable();
+
+                if (result.found) {
+                    showNotification('Absensi pada tanggal tersebut sudah dimuat. Silakan edit lalu simpan ulang.', 'info');
+                }
+            } catch (error) {
+                console.error('Gagal memuat absensi tersimpan:', error);
+                showNotification('Data lama belum dapat dimuat. Pastikan Apps Script sudah diperbarui.', 'error');
+            }
+        }
+
+        elements.attendance.dateInput.addEventListener('change', loadSavedAttendance);
+
+        // Tombol Ceklis Hadir Semua
+        elements.attendance.markAllBtn.addEventListener('click', () => {
+            currentStudents.forEach(student => {
+                attendanceData[student] = 'H';
+            });
+                    renderStudentTable();
+                    loadSavedAttendance();
+        });
+
+        // 4. Submit Absensi -> Simpan ke Database & Tampilkan Rekap
+        elements.attendance.form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (currentStudents.length === 0) {
+                showNotification('Tidak ada data siswa untuk di-rekap.', 'error');
+                return;
+            }
+
+            const btnSubmit = elements.attendance.form.querySelector('button[type="submit"]');
+            const originalBtnText = btnSubmit.innerHTML;
+            const dateVal = elements.attendance.dateInput.value;
+            
+            // UI Feedback: Loading Save to Database
+            btnSubmit.disabled = true;
+            btnSubmit.classList.add('opacity-75');
+            btnSubmit.innerHTML = `<div class="loader mr-2 border-t-white" style="width: 16px; height: 16px; border-width: 2px;"></div> Menyimpan ke Database...`;
+
+            try {
+                // 1. Siapkan Payload Data untuk dikirim ke Apps Script
+                const payload = {
+                    action: 'saveAttendance',
+                    sheetName: currentUser.selectedMapel,
+                    className: currentUser.selectedKelas, // Referensi tambahan jika diperlukan di script
+                    date: dateVal,
+                    attendance: currentStudents.map(studentName => ({
+                        name: studentName,
+                        className: currentUser.selectedKelas,
+                        status: attendanceData[studentName] || ''
+                    }))
+                };
+
+                // Peringatan jika URL Apps Script belum diset
+                if(APPS_SCRIPT_URL === 'ISI_DENGAN_URL_WEB_APP_APPS_SCRIPT_ANDA') {
+                     alert("MOHON PERHATIAN:\nAnda belum memasukkan APPS_SCRIPT_URL di dalam kode HTML. Data tidak akan tersimpan ke Google Sheets. Silakan ikuti panduan untuk deploy Google Apps Script terlebih dahulu.");
+                     throw new Error("URL Apps Script belum dikonfigurasi.");
+                }
+
+                // 2. Kirim Data POST ke Apps Script
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8', // Bypass CORS ketat preflight
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Koneksi ditolak oleh server (Status: ${response.status}). Pastikan Deploy Apps Script diatur ke "Anyone".`);
+                }
+
+                const result = await response.json();
+                
+                if (result.status !== 'success') {
+                    throw new Error(result.message || "Terjadi kesalahan saat memproses data di server.");
+                }
+
+                // 3. Jika berhasil, Generate Rekap Data di UI
+                let counts = { H: 0, A: 0, I: 0, S: 0 };
+                
+                const tbody = elements.recap.tbody;
+                tbody.innerHTML = '';
+                
+                currentStudents.forEach((studentName, index) => {
+                    const status = attendanceData[studentName];
+                    counts[status]++;
+                    
+                    let statusText, statusBadgeClass;
+                    switch(status) {
+                        case 'H': statusText = 'Hadir'; statusBadgeClass = 'bg-green-100 text-green-800'; break;
+                        case 'A': statusText = 'Alpa'; statusBadgeClass = 'bg-red-100 text-red-800'; break;
+                        case 'I': statusText = 'Izin'; statusBadgeClass = 'bg-blue-100 text-blue-800'; break;
+                        case 'S': statusText = 'Sakit'; statusBadgeClass = 'bg-yellow-100 text-yellow-800'; break;
+                    }
+
+                    const tr = document.createElement('tr');
+                    if (index % 2 !== 0) tr.classList.add('bg-gray-50'); // styling zebra table
+                    tr.innerHTML = `
+                        <td class="whitespace-nowrap py-2.5 pl-4 pr-3 text-sm text-gray-900">${index + 1}</td>
+                        <td class="pdf-student-name px-3 py-2.5 text-sm text-gray-900">${studentName}</td>
+                        <td class="whitespace-nowrap px-3 py-2.5 text-center text-sm font-medium">
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeClass}">${statusText}</span>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                // Update UI Rekap
+                elements.recap.mapel.innerText = currentUser.selectedMapel || currentUser.mapel;
+                elements.recap.kelas.innerText = currentUser.selectedKelas || currentUser.kelas;
+                
+                const dateObj = new Date(dateVal);
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                elements.recap.tanggal.innerText = dateObj.toLocaleDateString('id-ID', options);
+                
+                elements.recap.guru.innerText = currentUser.name;
+                elements.recap.signatureName.innerText = currentUser.name;
+
+                elements.recap.counts.H.innerText = counts.H;
+                elements.recap.counts.A.innerText = counts.A;
+                elements.recap.counts.I.innerText = counts.I;
+                elements.recap.counts.S.innerText = counts.S;
+
+                // Sembunyikan form absensi, tampilkan rekap
+                elements.views.attendance.classList.add('hidden');
+                elements.views.recap.classList.remove('hidden');
+                
+                showNotification(`Rekap berhasil! ${result.message}`, 'success');
+
+            } catch (error) {
+                console.error(error);
+                showNotification(`<b>Gagal menyimpan data:</b> ${error.message}<br><br><span class="text-xs"><b>Solusi:</b> Buka Apps Script > New Deployment > "Execute as: Me" > "Who has access: <b>Anyone</b>" (Bukan Anyone with Google Account).</span>`, 'error');
+            } finally {
+                // Kembalikan UI Tombol
+                btnSubmit.disabled = false;
+                btnSubmit.classList.remove('opacity-75');
+                btnSubmit.innerHTML = originalBtnText;
+            }
+        });
+
+        // Tombol Edit Kembali dari view Rekap
+        elements.recap.editBtn.addEventListener('click', () => {
+            elements.views.recap.classList.add('hidden');
+            elements.views.attendance.classList.remove('hidden');
+        });
+
+        function exportTableToExcel(tbodyId, filename, sheetName, metadataRows = []) {
+            if (typeof XLSX === 'undefined') {
+                showNotification('Library Excel belum termuat. Periksa koneksi internet lalu coba lagi.', 'error');
+                return;
+            }
+
+            const tbody = document.getElementById(tbodyId);
+            const table = tbody ? tbody.closest('table') : null;
+            if (!table || !tbody || !tbody.rows.length) {
+                showNotification('Tidak ada data rekap untuk diekspor.', 'error');
+                return;
+            }
+
+            try {
+                const tableSheet = XLSX.utils.table_to_sheet(table);
+                const tableRows = XLSX.utils.sheet_to_json(tableSheet, { header: 1, raw: true });
+                const worksheet = XLSX.utils.aoa_to_sheet([...metadataRows, [], ...tableRows]);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+                XLSX.writeFile(workbook, filename);
+                showNotification('File Excel berhasil diunduh.', 'success');
+            } catch (error) {
+                console.error('Gagal membuat file Excel:', error);
+                showNotification('Gagal membuat file Excel.', 'error');
+            }
+        }
+
+        // 5. Export rekap harian ke Excel
+        elements.recap.exportBtn.addEventListener('click', () => {
+            const dateVal = elements.attendance.dateInput.value;
+            const mapelLabel = currentUser.selectedMapel ? currentUser.selectedMapel.replace(/\s+/g, '_') : 'Mapel';
+            const kelasLabel = currentUser.selectedKelas ? currentUser.selectedKelas.replace(/\s+/g, '_') : 'Kelas';
+            exportTableToExcel('recapTableBody', `Absensi_${mapelLabel}_${kelasLabel}_${dateVal}.xlsx`, 'Absensi Harian');
+        });
+
+        // 6. Buka Fitur Rekap Total Semua Absensi
+        elements.dashboard.openRecapAllBtn.addEventListener('click', async () => {
+            if (!currentUser) return;
+            
+            const selectedMapel = elements.dashboard.mapel.value;
+            const selectedKelas = elements.dashboard.kelas.value;
+            
+            elements.recapAll.mapel.innerText = selectedMapel;
+            elements.recapAll.kelas.innerText = selectedKelas;
+            
+            const today = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            elements.recapAll.tanggal.innerText = today.toLocaleDateString('id-ID', options);
+            
+            showView('recapAll');
+            elements.views.recap.classList.add('hidden');
+            elements.views.attendance.classList.add('hidden');
+
+            // UI Loader
+            elements.recapAll.content.classList.add('hidden');
+            elements.recapAll.loader.classList.remove('hidden');
+            elements.recapAll.tbody.innerHTML = '';
+
+            try {
+                const sheetName = selectedMapel;
+                const studentData = await fetchSheetData(sheetName);
+                
+                if (studentData.length === 0) {
+                    elements.recapAll.tbody.innerHTML = `<tr><td colspan="6" class="px-3 py-4 text-center text-sm text-gray-500">Tidak ada data untuk sheet '${sheetName}'.</td></tr>`;
+                    return;
+                }
+
+                const headers = Object.keys(studentData[0]);
+                const namaKey = headers.find(h => h.toLowerCase().includes('nama')) || headers[1] || headers[0];
+                const kelasKey = headers.find(h => h.toLowerCase() === 'kelas' || h.toLowerCase().includes('kelas'));
+                
+                let filteredData = studentData;
+                
+                if (kelasKey && selectedKelas) {
+                    filteredData = studentData.filter(row => {
+                        const rowClass = row[kelasKey] ? row[kelasKey].toString().trim().toLowerCase() : '';
+                        const targetClass = selectedKelas.toLowerCase();
+                        return rowClass === targetClass;
+                    });
+                }
+
+                // Filter valid students only
+                const validStudentsData = filteredData.filter(row => row[namaKey] && row[namaKey].trim() !== '');
+
+                if (validStudentsData.length === 0) {
+                     elements.recapAll.tbody.innerHTML = `<tr><td colspan="6" class="px-3 py-4 text-center text-sm text-gray-500">Tidak ada data siswa untuk kelas ${selectedKelas}.</td></tr>`;
+                     return;
+                }
+
+                // Kalkulasi Totals
+                validStudentsData.forEach((row, index) => {
+                    let totals = { H: 0, A: 0, I: 0, S: 0 };
+                    
+                    // Hitung nilai di setiap kolom pada baris siswa ini
+                    Object.values(row).forEach(val => {
+                        const cellValue = val.toString().trim().toUpperCase();
+                        // Asumsi kuat bahwa nilai H, A, I, S adalah tanda absensi (sangat kecil kemungkinan nama siswa/kelas hanya 1 huruf ini)
+                        if (totals[cellValue] !== undefined) {
+                            totals[cellValue]++;
+                        }
+                    });
+
+                    // Render Row Table
+                    const tr = document.createElement('tr');
+                    if (index % 2 !== 0) tr.classList.add('bg-gray-50'); 
+                    
+                    tr.innerHTML = `
+                        <td class="whitespace-nowrap py-2.5 pl-4 pr-3 text-sm text-gray-900">${index + 1}</td>
+                        <td class="pdf-student-name px-3 py-2.5 text-sm font-medium text-gray-900">${row[namaKey]}</td>
+                        <td class="whitespace-nowrap px-3 py-2.5 text-center text-sm font-bold text-green-600">${totals.H}</td>
+                        <td class="whitespace-nowrap px-3 py-2.5 text-center text-sm font-bold text-red-600">${totals.A}</td>
+                        <td class="whitespace-nowrap px-3 py-2.5 text-center text-sm font-bold text-blue-600">${totals.I}</td>
+                        <td class="whitespace-nowrap px-3 py-2.5 text-center text-sm font-bold text-yellow-600">${totals.S}</td>
+                    `;
+                    elements.recapAll.tbody.appendChild(tr);
+                });
+
+            } catch (error) {
+                elements.recapAll.tbody.innerHTML = `<tr><td colspan="6" class="px-3 py-4 text-center text-sm text-red-500 font-medium">Gagal mengambil data dari Google Sheets. Pastikan akses publik aktif.</td></tr>`;
+                console.error("Gagal load rekap total: ", error);
+            } finally {
+                elements.recapAll.loader.classList.add('hidden');
+                elements.recapAll.content.classList.remove('hidden');
+            }
+        });
+
+        // 7. Kembali dari view Rekap Total ke Dashboard
+        elements.recapAll.backBtn.addEventListener('click', () => {
+            showView('dashboard');
+        });
+
+        // 8. Export rekap total ke Excel
+        elements.recapAll.exportBtn.addEventListener('click', () => {
+            const mapelLabel = elements.dashboard.mapel.value.replace(/\s+/g, '_') || 'Mapel';
+            const kelasLabel = elements.dashboard.kelas.value.replace(/\s+/g, '_') || 'Kelas';
+            const dateObj = new Date();
+            const dateString = dateObj.toISOString().split('T')[0];
+            exportTableToExcel(
+                'recapAllTableBody',
+                `RekapTotal_${mapelLabel}_${kelasLabel}_${dateString}.xlsx`,
+                'Rekap Total',
+                [
+                    ['Rekapitulasi Total Absensi Siswa'],
+                    [`Mata Pelajaran: ${elements.recapAll.mapel.innerText}`],
+                    [`Kelas: ${elements.recapAll.kelas.innerText}`],
+                    [`Diunduh pada: ${elements.recapAll.tanggal.innerText}`]
+                ]
+            );
+        });
+
+    </script>
+</body>
+</html>
