@@ -367,6 +367,12 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                         </button>
+                        <button id="openMonthlyRecapBtn" class="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-3 px-4 rounded-lg shadow transition-colors flex justify-center items-center">
+                            <span>Lihat Rekap Bulanan</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -550,6 +556,68 @@
             </div>
         </div>
 
+        <div id="monthlyRecapView" class="hidden bg-white rounded-xl shadow-lg p-6 sm:p-8 transition-all mt-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b pb-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Rekapitulasi Absensi Bulanan</h2>
+                    <p class="text-gray-600 mt-1">Mata Pelajaran: <span id="monthlyMapel" class="font-semibold text-blue-700"></span> | Kelas: <span id="monthlyKelas" class="font-semibold text-emerald-700"></span></p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button id="backToDashFromMonthlyRecapBtn" class="text-sm text-blue-600 hover:text-blue-800 font-medium px-4 py-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        Kembali
+                    </button>
+                    <button id="exportMonthlyRecapBtn" class="text-sm px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg shadow transition-colors flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Export Excel
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+                <div class="w-full sm:w-64">
+                    <label for="monthlyRecapMonth" class="block text-sm font-medium text-gray-700 mb-1">Pilih Bulan</label>
+                    <select id="monthlyRecapMonth" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none"></select>
+                </div>
+            </div>
+
+            <div id="monthlyRecapLoader" class="flex flex-col items-center justify-center py-10 hidden">
+                <div class="loader mb-4 border-t-violet-500"></div>
+                <p class="text-gray-500 font-medium">Mengkalkulasi rekap bulanan...</p>
+            </div>
+
+            <div id="monthlyRecapContent" class="pdf-export pdf-total-export bg-white hidden">
+                <div class="pdf-card-header text-center mb-6 pb-4 border-b-2 border-gray-800">
+                    <h3 class="text-xl font-bold uppercase">Rekap Absensi Bulanan</h3>
+                    <p class="text-sm mt-1">Bulan: <span id="monthlyRecapPeriod" class="font-bold"></span></p>
+                    <p class="text-sm">Mata Pelajaran: <span id="monthlyRecapMapel" class="font-bold"></span></p>
+                    <p class="text-sm">Kelas: <span id="monthlyRecapKelas" class="font-bold"></span></p>
+                </div>
+
+                <div class="pdf-card-table">
+                    <table class="recap-total-table divide-y divide-gray-300">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th scope="col" class="py-2.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">No</th>
+                                <th scope="col" class="px-3 py-2.5 text-left text-sm font-semibold text-gray-900">Nama Siswa</th>
+                                <th scope="col" class="px-3 py-2.5 text-center text-sm font-semibold text-green-700">Hadir</th>
+                                <th scope="col" class="px-3 py-2.5 text-center text-sm font-semibold text-red-700">Alpa</th>
+                                <th scope="col" class="px-3 py-2.5 text-center text-sm font-semibold text-blue-700">Izin</th>
+                                <th scope="col" class="px-3 py-2.5 text-center text-sm font-semibold text-yellow-700">Sakit</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monthlyRecapTableBody" class="divide-y divide-gray-200 bg-white">
+                            <!-- Data rekap bulanan di-render di sini -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <div class="mobile-zoom-controls" aria-label="Kontrol zoom tampilan">
@@ -582,7 +650,8 @@
                 dashboard: document.getElementById('dashboardView'),
                 attendance: document.getElementById('attendanceView'),
                 recap: document.getElementById('recapView'),
-                recapAll: document.getElementById('recapAllView') // Tambahan view baru
+                recapAll: document.getElementById('recapAllView'),
+                monthlyRecap: document.getElementById('monthlyRecapView')
             },
             login: {
                 form: document.getElementById('loginForm'),
@@ -597,7 +666,8 @@
                 mapel: document.getElementById('dashMapel'),
                 kelas: document.getElementById('dashKelas'),
                 openBtn: document.getElementById('openAttendanceBtn'),
-                openRecapAllBtn: document.getElementById('openRecapAllBtn'), // Tambahan tombol rekap total
+                openRecapAllBtn: document.getElementById('openRecapAllBtn'),
+                openMonthlyRecapBtn: document.getElementById('openMonthlyRecapBtn'),
                 logoutBtn: document.getElementById('logoutBtn')
             },
             attendance: {
@@ -636,6 +706,19 @@
                 content: document.getElementById('recapAllContent'),
                 tbody: document.getElementById('recapAllTableBody'),
                 exportBtn: document.getElementById('exportPdfRecapAllBtn')
+            },
+            monthlyRecap: {
+                mapel: document.getElementById('monthlyMapel'),
+                kelas: document.getElementById('monthlyKelas'),
+                period: document.getElementById('monthlyRecapPeriod'),
+                monthSelect: document.getElementById('monthlyRecapMonth'),
+                mapelSummary: document.getElementById('monthlyRecapMapel'),
+                kelasSummary: document.getElementById('monthlyRecapKelas'),
+                backBtn: document.getElementById('backToDashFromMonthlyRecapBtn'),
+                loader: document.getElementById('monthlyRecapLoader'),
+                content: document.getElementById('monthlyRecapContent'),
+                tbody: document.getElementById('monthlyRecapTableBody'),
+                exportBtn: document.getElementById('exportMonthlyRecapBtn')
             },
             notification: document.getElementById('notificationArea')
         };
@@ -891,8 +974,9 @@
             localStorage.removeItem(SAVED_LOGIN_KEY);
             elements.login.form.reset();
             showView('login');
-            elements.views.recap.classList.add('hidden'); // Sembunyikan recap jika ada
-            elements.views.recapAll.classList.add('hidden'); 
+            elements.views.recap.classList.add('hidden');
+            elements.views.recapAll.classList.add('hidden');
+            elements.views.monthlyRecap.classList.add('hidden');
             showNotification('Anda telah berhasil logout.', 'info');
         });
 
@@ -922,8 +1006,9 @@
             elements.attendance.kelas.innerText = selectedKelas;
             
             showView('attendance');
-            elements.views.recap.classList.add('hidden'); // Reset view rekap
-            elements.views.recapAll.classList.add('hidden'); 
+            elements.views.recap.classList.add('hidden');
+            elements.views.recapAll.classList.add('hidden');
+            elements.views.monthlyRecap.classList.add('hidden');
 
             // UI Feedback Memuat daftar siswa
             elements.attendance.content.classList.add('hidden');
@@ -983,6 +1068,7 @@
             showView('dashboard');
             elements.views.recap.classList.add('hidden');
             elements.views.recapAll.classList.add('hidden');
+            elements.views.monthlyRecap.classList.add('hidden');
         });
 
         // Fungsi merender tabel siswa dengan radio buttons
@@ -1268,6 +1354,227 @@
             const mapelLabel = currentUser.selectedMapel ? currentUser.selectedMapel.replace(/\s+/g, '_') : 'Mapel';
             const kelasLabel = currentUser.selectedKelas ? currentUser.selectedKelas.replace(/\s+/g, '_') : 'Kelas';
             exportTableToExcel('recapTableBody', `Absensi_${mapelLabel}_${kelasLabel}_${dateVal}.xlsx`, 'Absensi Harian');
+        });
+
+        function parseDateKey(dateValue) {
+            if (dateValue === null || dateValue === undefined) return null;
+            const raw = String(dateValue).trim();
+            if (!raw) return null;
+
+            const isoMatch = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+            if (isoMatch) {
+                const [, year, month, day] = isoMatch;
+                const parsed = new Date(Number(year), Number(month) - 1, Number(day));
+                if (!Number.isNaN(parsed.getTime())) return parsed;
+            }
+
+            const dmyMatch = raw.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+            if (dmyMatch) {
+                const [, day, month, year] = dmyMatch;
+                const parsed = new Date(Number(year), Number(month) - 1, Number(day));
+                if (!Number.isNaN(parsed.getTime())) return parsed;
+            }
+
+            const parsed = new Date(raw);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        function monthKeyFromDateValue(dateValue) {
+            const parsedDate = parseDateKey(dateValue);
+            if (!parsedDate) return null;
+            const year = parsedDate.getFullYear();
+            const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+            return `${year}-${month}`;
+        }
+
+        function formatMonthLabel(monthKey) {
+            if (!monthKey || !/^\d{4}-\d{2}$/.test(monthKey)) return 'Bulan tidak valid';
+            const [year, month] = monthKey.split('-');
+            return new Date(Number(year), Number(month) - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+        }
+
+        function buildMonthlyOptions(studentData, selectedKelas = '', kelasKey = '') {
+            const monthSet = new Set();
+            const relevantRows = selectedKelas && kelasKey
+                ? studentData.filter(row => {
+                    const rowClass = row[kelasKey] ? row[kelasKey].toString().trim().toLowerCase() : '';
+                    return rowClass === selectedKelas.toLowerCase();
+                })
+                : studentData;
+
+            relevantRows.forEach(row => {
+                Object.entries(row).forEach(([key, value]) => {
+                    const normalized = String(value || '').trim().toUpperCase();
+                    if (!['H', 'A', 'I', 'S'].includes(normalized)) return;
+                    const monthKey = monthKeyFromDateValue(key);
+                    if (monthKey) monthSet.add(monthKey);
+                });
+            });
+
+            const months = Array.from(monthSet).sort((a, b) => a.localeCompare(b));
+            return months.length ? months : [new Date().toISOString().slice(0, 7)];
+        }
+
+        function renderMonthlyRecapTable(summaryRows, monthKey) {
+            const tbody = elements.monthlyRecap.tbody;
+            tbody.innerHTML = '';
+
+            if (!summaryRows.length) {
+                tbody.innerHTML = `<tr><td colspan="6" class="px-3 py-4 text-center text-sm text-gray-500">Tidak ada data absensi untuk bulan ${formatMonthLabel(monthKey)}.</td></tr>`;
+                return;
+            }
+
+            summaryRows.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                if (index % 2 !== 0) tr.classList.add('bg-gray-50');
+                tr.innerHTML = `
+                    <td class="whitespace-nowrap py-2.5 pl-4 pr-3 text-sm text-gray-900">${index + 1}</td>
+                    <td class="px-3 py-2.5 text-sm font-medium text-gray-900">${row.name}</td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-center text-sm font-bold text-green-600">${row.H}</td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-center text-sm font-bold text-red-600">${row.A}</td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-center text-sm font-bold text-blue-600">${row.I}</td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-center text-sm font-bold text-yellow-600">${row.S}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function loadMonthlyRecapData() {
+            if (!currentUser) return;
+
+            const selectedMapel = elements.dashboard.mapel.value;
+            const selectedKelas = elements.dashboard.kelas.value;
+            const monthKey = elements.monthlyRecap.monthSelect.value || new Date().toISOString().slice(0, 7);
+
+            elements.monthlyRecap.mapel.innerText = selectedMapel;
+            elements.monthlyRecap.kelas.innerText = selectedKelas;
+            elements.monthlyRecap.mapelSummary.innerText = selectedMapel;
+            elements.monthlyRecap.kelasSummary.innerText = selectedKelas;
+            elements.monthlyRecap.period.innerText = formatMonthLabel(monthKey);
+
+            showView('monthlyRecap');
+            elements.views.recap.classList.add('hidden');
+            elements.views.recapAll.classList.add('hidden');
+            elements.views.attendance.classList.add('hidden');
+            elements.monthlyRecap.loader.classList.remove('hidden');
+            elements.monthlyRecap.content.classList.add('hidden');
+            elements.monthlyRecap.tbody.innerHTML = '';
+
+            try {
+                const studentData = await fetchSheetData(selectedMapel);
+                if (studentData.length === 0) {
+                    elements.monthlyRecap.tbody.innerHTML = `<tr><td colspan="6" class="px-3 py-4 text-center text-sm text-gray-500">Tidak ada data untuk sheet '${selectedMapel}'.</td></tr>`;
+                    return;
+                }
+
+                const headers = Object.keys(studentData[0]);
+                const namaKey = headers.find(h => h.toLowerCase().includes('nama')) || headers[1] || headers[0];
+                const kelasKey = headers.find(h => h.toLowerCase() === 'kelas' || h.toLowerCase().includes('kelas'));
+
+                let filteredData = studentData;
+                if (kelasKey && selectedKelas) {
+                    filteredData = studentData.filter(row => {
+                        const rowClass = row[kelasKey] ? row[kelasKey].toString().trim().toLowerCase() : '';
+                        return rowClass === selectedKelas.toLowerCase();
+                    });
+                }
+
+                const validStudentsData = filteredData.filter(row => row[namaKey] && row[namaKey].trim() !== '');
+                const monthOptions = buildMonthlyOptions(studentData, selectedKelas, kelasKey);
+
+                if (!monthOptions.includes(monthKey)) {
+                    elements.monthlyRecap.monthSelect.value = monthOptions[0];
+                }
+
+                const selectedMonth = elements.monthlyRecap.monthSelect.value || monthOptions[0];
+                const summaryRows = validStudentsData.map(row => {
+                    const totals = { H: 0, A: 0, I: 0, S: 0 };
+                    Object.entries(row).forEach(([key, value]) => {
+                        const status = String(value || '').trim().toUpperCase();
+                        if (!['H', 'A', 'I', 'S'].includes(status)) return;
+                        const monthFromKey = monthKeyFromDateValue(key);
+                        if (!monthFromKey || monthFromKey !== selectedMonth) return;
+                        totals[status] += 1;
+                    });
+
+                    return {
+                        name: row[namaKey].trim(),
+                        H: totals.H,
+                        A: totals.A,
+                        I: totals.I,
+                        S: totals.S
+                    };
+                }).sort((a, b) => a.name.localeCompare(b.name, 'id'));
+
+                renderMonthlyRecapTable(summaryRows, selectedMonth);
+                elements.monthlyRecap.period.innerText = formatMonthLabel(selectedMonth);
+
+            } catch (error) {
+                elements.monthlyRecap.tbody.innerHTML = `<tr><td colspan="6" class="px-3 py-4 text-center text-sm text-red-500 font-medium">Gagal mengambil data dari Google Sheets. Pastikan akses publik aktif.</td></tr>`;
+                console.error('Gagal load rekap bulanan: ', error);
+            } finally {
+                elements.monthlyRecap.loader.classList.add('hidden');
+                elements.monthlyRecap.content.classList.remove('hidden');
+            }
+        }
+
+        elements.dashboard.openMonthlyRecapBtn.addEventListener('click', async () => {
+            if (!currentUser) return;
+
+            const selectedMapel = elements.dashboard.mapel.value;
+            const selectedKelas = elements.dashboard.kelas.value;
+            currentUser.selectedMapel = selectedMapel;
+            currentUser.selectedKelas = selectedKelas;
+
+            try {
+                const studentData = await fetchSheetData(selectedMapel);
+                const headers = Object.keys(studentData[0] || {});
+                const kelasKey = headers.find(h => h.toLowerCase() === 'kelas' || h.toLowerCase().includes('kelas'));
+                const monthOptions = buildMonthlyOptions(studentData, selectedKelas, kelasKey);
+                const monthSelect = elements.monthlyRecap.monthSelect;
+                monthSelect.innerHTML = '';
+                monthOptions.forEach(monthKey => {
+                    const option = document.createElement('option');
+                    option.value = monthKey;
+                    option.textContent = formatMonthLabel(monthKey);
+                    monthSelect.appendChild(option);
+                });
+                const currentMonth = new Date().toISOString().slice(0, 7);
+                monthSelect.value = monthOptions.includes(currentMonth) ? currentMonth : monthOptions[0];
+                await loadMonthlyRecapData();
+            } catch (error) {
+                elements.monthlyRecap.tbody.innerHTML = `<tr><td colspan="6" class="px-3 py-4 text-center text-sm text-red-500 font-medium">Gagal memuat rekap bulanan. Pastikan data sheet tersedia.</td></tr>`;
+                console.error('Gagal membuka rekap bulanan: ', error);
+                elements.monthlyRecap.loader.classList.add('hidden');
+                elements.monthlyRecap.content.classList.remove('hidden');
+            }
+        });
+
+        elements.monthlyRecap.monthSelect.addEventListener('change', () => {
+            if (currentUser) {
+                loadMonthlyRecapData();
+            }
+        });
+
+        elements.monthlyRecap.backBtn.addEventListener('click', () => {
+            showView('dashboard');
+        });
+
+        elements.monthlyRecap.exportBtn.addEventListener('click', () => {
+            const monthKey = elements.monthlyRecap.monthSelect.value || new Date().toISOString().slice(0, 7);
+            const mapelLabel = elements.dashboard.mapel.value.replace(/\s+/g, '_') || 'Mapel';
+            const kelasLabel = elements.dashboard.kelas.value.replace(/\s+/g, '_') || 'Kelas';
+            exportTableToExcel(
+                'monthlyRecapTableBody',
+                `RekapBulanan_${mapelLabel}_${kelasLabel}_${monthKey}.xlsx`,
+                'Rekap Bulanan',
+                [
+                    ['Rekapitulasi Absensi Bulanan'],
+                    [`Mata Pelajaran: ${elements.monthlyRecap.mapel.innerText}`],
+                    [`Kelas: ${elements.monthlyRecap.kelas.innerText}`],
+                    [`Bulan: ${formatMonthLabel(monthKey)}`]
+                ]
+            );
         });
 
         // 6. Buka Fitur Rekap Total Semua Absensi
